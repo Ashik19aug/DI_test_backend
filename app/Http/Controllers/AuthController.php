@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use App\Models\User;
 
-class AuthController extends Controller
+class AuthController extends BaseController
 {
     public function register(Request $request)
     {
@@ -26,7 +26,7 @@ class AuthController extends Controller
             'gender' => $request->gender, // Store the gender
         ]);
 
-        return response()->json(['message' => 'User registered successfully!'], 201);
+        return $this->successResponse((object)[],"User registered successfully!");
     }
 
     // User Login
@@ -37,17 +37,25 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        try {
+            $user = User::where('email', $request->email)->first();
 
-        if (! $user || ! Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
-            ]);
+            if (! $user || ! Hash::check($request->password, $user->password)) {
+                throw ValidationException::withMessages([
+                    'email' => ['The provided credentials are incorrect.'],
+                ]);
+            }
+
+            $token = $user->createToken('auth_token')->plainTextToken;
+
+            return $this->successResponse([
+                'token' => $token,
+                'token_type' => 'Bearer'
+            ],"Login successfully!");
+        }catch (\Exception $e){
+            return $this->failedResponseWithError($e,"Login Failed!");
         }
 
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json(['access_token' => $token, 'token_type' => 'Bearer']);
     }
 
     // Get User Profile
